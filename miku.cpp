@@ -5,12 +5,12 @@
 #include <iostream>
 #include <cstdlib>
 #include <cmath>
-
+#include <time.h>
 
 cv::Mat img;
 //cv::Mat crosshair;
 
-cv::Point cursorA, cursorB;
+cv::Point cursorA, cursorB, mouse;
 enum CursorState {
   NONE = 0,
   HAS_A,
@@ -33,7 +33,6 @@ std::string pointToMeasResult(cv::Point &a, cv::Point &b){
 
 void mouseHandler(int event, int x, int y, int z, void* userdata){
   if(event == 1){
-    //cv::putText(img, "boop", cv::Point(x, y), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 1, cv::LINE_AA);
     if(cs == NONE){
       cursorA = cv::Point(x, y);
       cs = HAS_A;
@@ -44,8 +43,16 @@ void mouseHandler(int event, int x, int y, int z, void* userdata){
       cs = NONE;
     }
   }
+  mouse = cv::Point(x, y);
+  
+}
 
-  cv::Mat buffer = img.clone();
+//void loadResources(){
+//   crosshair = cv::imread("resources/crosshair1.png", cv::IMREAD_COLOR);
+// }
+
+void drawUI(cv::Mat &buffer){
+
   if(cs == HAS_A || cs == HAS_B) {
     cv::drawMarker(buffer, cursorA, cv::Scalar(0, 0, 255), cv::MARKER_TRIANGLE_UP);
     cv::drawMarker(buffer, cursorA, cv::Scalar(0, 0, 255), cv::MARKER_CROSS);
@@ -61,29 +68,46 @@ void mouseHandler(int event, int x, int y, int z, void* userdata){
   }
   
   //Draw mouse
-  cv::drawMarker(buffer, cv::Point(x, y), cv::Scalar(0, 0, 255), cv::MARKER_CROSS);
-  std::cout << "Click!" << x << "," << y << "; event=" << event << std::endl;
-  cv::imshow("display", buffer);
+  cv::drawMarker(buffer, mouse, cv::Scalar(0, 0, 255), cv::MARKER_CROSS);
+
 }
 
-//void loadResources(){
-//   crosshair = cv::imread("resources/crosshair1.png", cv::IMREAD_COLOR);
-// }
+
 
 
 int main() {
   int value;
-  img = cv::imread("./jetto.jpg", cv::IMREAD_COLOR);
-  cv::namedWindow("display", cv::WINDOW_AUTOSIZE | cv::WINDOW_GUI_NORMAL);
-  cv::setMouseCallback("display", mouseHandler, NULL);
-  if(img.empty()) {
-    std::cout << "Could not read the image " << std::endl;
+
+  cv::VideoCapture camera(0);
+  cv::namedWindow("MIKU", cv::WINDOW_AUTOSIZE | cv::WINDOW_GUI_NORMAL);
+  cv::setMouseCallback("MIKU", mouseHandler, NULL);
+  camera.set(cv::CAP_PROP_FRAME_WIDTH, 800);
+  camera.set(cv::CAP_PROP_FRAME_HEIGHT, 600);
+  if (!camera.isOpened()) {
+    std::cerr << "ERROR: Could not open camera" << std::endl;
     return 1;
   }
- 
-  cv::imshow("display", img);
+  while (1) {
+    // capture the next frame from the webcam
+    camera >> img;
+    
+    drawUI(img);
+    cv::imshow("MIKU", img);
+    int key = cv::waitKey(10);
+    // wait (10ms) for esc key to be pressed to stop
+    if (key == 27 || key == 'q')
+      break;
+    else if(key == 's'){
+      std::stringstream ss;
+      ss << "frame_" << time(NULL) << ".png";
+      cv::imwrite(ss.str(), img);
+    }
+  }
   
-  cv::waitKey(0);
   cv::destroyAllWindows();
   return 0;
+
+  
+ 
+  
 }
